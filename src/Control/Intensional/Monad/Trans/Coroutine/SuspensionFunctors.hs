@@ -5,7 +5,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Control.Intensional.Monad.Trans.Coroutine.SuspensionFunctors
-(
+( Await(..)
+, Yield(..)
 ) where
 
 import Control.Intensional.Functor
