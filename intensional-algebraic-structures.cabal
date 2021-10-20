@@ -28,6 +28,7 @@ library
   exposed-modules:
       Control.Intensional.Applicative.Free
       Control.Intensional.Monad.Free
+      Control.Intensional.Monad.Identity
       Control.Intensional.Monad.State
       Control.Intensional.Monad.Trans
       Control.Intensional.Monad.Trans.Coroutine
