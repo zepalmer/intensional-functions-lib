@@ -7,9 +7,13 @@
 module Control.Intensional.Monad.Trans.Coroutine.SuspensionFunctors
 ( Await(..)
 , Yield(..)
+, await
 ) where
 
+import Control.Intensional.Applicative
 import Control.Intensional.Functor
+import Control.Intensional.Monad
+import Control.Intensional.Monad.Trans.Coroutine
 import Control.Intensional.Runtime
 import Control.Intensional.WrappedIntensionalUtilFunctions
 
@@ -27,3 +31,13 @@ instance (WrappableWith c '[x]) => IntensionalFunctor (Await c x) where
       (c (HList '[a ->%c b]), c (HList '[a ->%c b, x ->%c a]))
   itsFmap = \%c f (Await fn) -> Await (itsCompose %@ f %@ fn)
 
+await :: ( Wrappable c
+         , Typeable a
+         , IntensionalMonad m
+         , IntensionalFunctorCF m ~ c
+         , IntensionalApplicativePureC m
+            (Either ((Await c a) (CoroutineT c (Await c a) m a)) a)
+         )
+      => CoroutineT c (Await c a) m a
+await =
+  suspend (Await itsPure) -- TODO: consider: should suspend be intensional?

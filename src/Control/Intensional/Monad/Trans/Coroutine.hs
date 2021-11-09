@@ -10,6 +10,7 @@
 module Control.Intensional.Monad.Trans.Coroutine
 ( CoroutineT(..)
 , suspend
+, CoroutineStepResult
 ) where
 
 import Control.Intensional.Applicative
