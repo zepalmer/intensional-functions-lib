@@ -15,24 +15,26 @@ import Control.Intensional.Functor
 import Control.Intensional.Monad
 import Control.Intensional.Monad.Trans.Coroutine
 import Control.Intensional.Runtime
-import Control.Intensional.WrappedIntensionalUtilFunctions
+import Control.Intensional.UtilityFunctions
 
 data Yield (c :: ConstraintFn) x y = Yield x y
-instance (WrappableWith c '[x]) => IntensionalFunctor (Yield c x) where
+instance (Typeable c, Typeable x) => IntensionalFunctor (Yield c x) where
   type IntensionalFunctorCF (Yield c x) = c
-  type IntensionalFunctorMapC (Yield c x) a b =
-      (c (HList '[a ->%c b]))
-  itsFmap = \%c f (Yield x y) -> Yield x $ f %@ y
+  type IntensionalFunctorMapC (Yield c x) a b = ()
+  itsFmap = \%%c f (Yield x y) -> Yield x $ f %@ y
 
 data Await c x y = Await (x ->%c y)
-instance (WrappableWith c '[x]) => IntensionalFunctor (Await c x) where
+instance (Typeable c, Typeable x) => IntensionalFunctor (Await c x) where
   type IntensionalFunctorCF (Await c x) = c
   type IntensionalFunctorMapC (Await c x) a b =
-      (c (HList '[a ->%c b]), c (HList '[a ->%c b, x ->%c a]))
-  itsFmap = \%c f (Await fn) -> Await (itsCompose %@ f %@ fn)
+      ( Typeable a, Typeable b
+      , c (a ->%c b)
+      , c (x ->%c a)
+      )
+  itsFmap = \%%c f (Await fn) -> Await (itsCompose %@% (f,fn))
 
-await :: ( Wrappable c
-         , Typeable a
+await :: ( Typeable a
+         , Typeable c
          , IntensionalMonad m
          , IntensionalFunctorCF m ~ c
          , IntensionalApplicativePureC m

@@ -34,25 +34,22 @@ data FreeIntensionalApplicative
 
 {- ========== Free Intensional Applicative Instances ========== -}
 
-instance ( Wrappable (IntensionalFunctorCF (FreeIntensionalApplicative c f))
-         , Typeable f)
+instance (Typeable f)
     => IntensionalFunctor (FreeIntensionalApplicative c f) where
   type IntensionalFunctorCF (FreeIntensionalApplicative c f) = c
   type IntensionalFunctorMapC (FreeIntensionalApplicative c f) a b =
-    c (HList '[a ->%c b])
-  itsFmap = \%c f a -> FiaFmap f a
+    ()
+  itsFmap = \%%c f a -> FiaFmap f a
 
-instance ( Wrappable (IntensionalFunctorCF (FreeIntensionalApplicative c f))
-         , Typeable f)
+instance (Typeable c, Typeable f)
     => IntensionalApplicative (FreeIntensionalApplicative c f) where
   type IntensionalApplicativePureC (FreeIntensionalApplicative c f) a =
     (Typeable a)
   type IntensionalApplicativeApC (FreeIntensionalApplicative c f) a b =
     ( Typeable a, Typeable b
-    , c (HList '[FreeIntensionalApplicative c f (a ->%c b)])
     )
   itsPure = \%c x -> FiaPure x
-  (%<*>) = \%c f a -> FiaAp f a
+  (%<*>) = \%%c f a -> FiaAp f a
 
 {- ========== Free Intensional Applicative Utilities ========== -}
 
@@ -62,8 +59,8 @@ instance ( Wrappable (IntensionalFunctorCF (FreeIntensionalApplicative c f))
 -- coherent.
 fiaForget :: (Applicative g) => FreeIntensionalApplicative c f a -> g a
 fiaForget (FiaPure a) = pure a
-fiaForget (FiaFmap f a) = fmap (forget f) (fiaForget a)
-fiaForget (FiaAp f a) = (forget <$> fiaForget f) <*> (fiaForget a)
+fiaForget (FiaFmap f a) = fmap (itsForget f) (fiaForget a)
+fiaForget (FiaAp f a) = (itsForget <$> fiaForget f) <*> (fiaForget a)
 
 -- This routine maps from the free intensional applicative onto another
 -- (potentially more equation-ful) intensional applicative.

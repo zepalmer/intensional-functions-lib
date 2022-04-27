@@ -1,5 +1,7 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE IntensionalFunctions #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -35,35 +37,43 @@ deriving instance (Ord (m (CoroutineStepResult c s m r)))
 
 instance ( IntensionalMonad m
          , IntensionalFunctor s
+         , Typeable c
          , Typeable s
          , IntensionalFunctorCF m ~ c
          , IntensionalFunctorCF s ~ c
          )
     => IntensionalFunctor (CoroutineT c s m) where
+
   type IntensionalFunctorCF (CoroutineT c s m) = c
   type IntensionalFunctorMapC (CoroutineT c s m) a b =
-    ( c (HList '[(a ->%c b) ->%c
-          (CoroutineStepResult c s m a ->%c CoroutineStepResult c s m b)])
-    , c (HList '[
-          (a ->%c b) ->%c
-              (CoroutineStepResult c s m a ->%c CoroutineStepResult c s m b),
-          (a ->%c b)
-        ])
-    , c (HList '[a ->%c b])
-    , IntensionalFunctorMapC m
-        (CoroutineStepResult c s m a)
-        (CoroutineStepResult c s m b)
-    , IntensionalFunctorMapC s (CoroutineT c s m a) (CoroutineT c s m b)
+    ( Typeable a, Typeable b
+    , c (a ->%c b)
+    , c ('[a ->%c b, CoroutineStepResult c s m a]
+          ->%%c CoroutineStepResult c s m b)
+    , IntensionalFunctorMapC
+        m (CoroutineStepResult c s m a) (CoroutineStepResult c s m b)
+    , IntensionalFunctorMapC
+        s (CoroutineT c s m a) (CoroutineT c s m b)
     )
-  itsFmap = \%c f x ->
-    CoroutineT (itsFmap %@ (apply %@ f) %@ (resume x))
-    where apply = \%c fc r ->
+
+  itsFmap :: forall a b f.
+             ( c ~ IntensionalFunctorCF f
+             , f ~ CoroutineT c s m
+             , IntensionalFunctorMapC f a b
+             )
+          => '[a ->%c b, f a] ->%%c f b
+  itsFmap = \%%c f x ->
+    CoroutineT (itsFmap %@% (apply %@ f, resume x))
+    where apply :: '[a ->%c b, CoroutineStepResult c s m a]
+             ->%%c CoroutineStepResult c s m b
+          apply = \%%c fc r ->
             case r of
               Right x -> Right (fc %@ x)
-              Left s -> Left (itsFmap %@ (itsFmap %@ fc) %@ s)
+              Left s -> Left (itsFmap %@% (itsFmap %@ fc, s))
 
 instance ( IntensionalMonad m
          , IntensionalFunctor s
+         , Typeable c
          , Typeable s
          , IntensionalFunctorCF m ~ c
          , IntensionalFunctorCF s ~ c
@@ -71,71 +81,74 @@ instance ( IntensionalMonad m
     => IntensionalApplicative (CoroutineT c s m) where
 
   type IntensionalApplicativePureC (CoroutineT c s m) a =
-    ( IntensionalApplicativePureC m (CoroutineStepResult c s m a)
-    , Typeable a)
+    ( IntensionalApplicativePureC m (CoroutineStepResult c s m a) )
   itsPure = \%c x ->
     CoroutineT $ itsPure %@ Right x
 
   type IntensionalApplicativeApC (CoroutineT c s m) a b =
     ( Typeable a, Typeable b
-    , c (HList '[CoroutineT c s m (a ->%c b)])
-    , c (HList
-          '[(a ->%c b) ->%c (CoroutineStepResult c s m a)
-                       ->%c (CoroutineStepResult c s m b)
-           ])
-    , c (HList
-          '[ (a ->%c b) ->%c (CoroutineStepResult c s m a)
-                        ->%c (CoroutineStepResult c s m b)
-           , a ->%c b
-           ])
-    , c (HList '[a ->%c b])
-    , c (HList '[CoroutineT c s m a])
-    , IntensionalFunctorMapC m
-        (CoroutineStepResult c s m a) (CoroutineStepResult c s m b)
-    , IntensionalFunctorMapC s (CoroutineT c s m a) (CoroutineT c s m b)
+    , c (CoroutineT c s m a)
+    , IntensionalFunctorMapC (CoroutineT c s m) a b
+    , IntensionalMonad (CoroutineT c s m)
     , IntensionalMonadBindC (CoroutineT c s m) (a ->%c b) b
     )
-  (%<*>) = \%c f x -> itsAp %@ f %@ x
+  (%<*>) = itsAp
 
 instance ( IntensionalMonad m
          , IntensionalFunctor s
+         , Typeable c
          , Typeable s
          , IntensionalFunctorCF m ~ c
          , IntensionalFunctorCF s ~ c
          )
     => IntensionalMonad (CoroutineT c s m) where
+
   type IntensionalMonadBindC (CoroutineT c s m) a b =
     ( Typeable a, Typeable b
-    , c (HList
-          '[(a ->%c CoroutineT c s m b) ->%c
-              (CoroutineStepResult c s m a ->%c m (CoroutineStepResult c s m b))
-           ])
-    , c (HList
-          '[CoroutineT c s m a
-           ,(a ->%c CoroutineT c s m b) ->%c
-              (CoroutineStepResult c s m a ->%c m (CoroutineStepResult c s m b))
-           ])
-    , c (HList '[a ->%c (CoroutineT c s m b)])
+    , c ('[ a ->%c CoroutineT c s m b
+          , CoroutineStepResult c s m a
+          ] ->%%c m (CoroutineStepResult c s m b))
+    , c ('[ a ->%c b ->%c CoroutineT c s m b
+          , CoroutineStepResult c s m (a ->%c b)
+          ] ->%%c m (CoroutineStepResult c s m b))
+    , c ('[ a ->%c CoroutineT c s m b
+          , CoroutineStepResult c s m a
+          ] ->%%c
+          m (CoroutineStepResult c s m b)
+        )
+    , c (a ->%c CoroutineT c s m b)
     , IntensionalFunctorMapC s (CoroutineT c s m a) (CoroutineT c s m b)
+    , IntensionalFunctorMapC m a (CoroutineStepResult c s m a)
     , IntensionalApplicativePureC m (CoroutineStepResult c s m b)
-    , IntensionalMonadBindC m
-        (CoroutineStepResult c s m a) (CoroutineStepResult c s m b)
+    , IntensionalMonadBindC
+        m (CoroutineStepResult c s m a) (CoroutineStepResult c s m b)
     )
-  itsBind = \%c x f ->
-    CoroutineT (itsBind %@ (resume x) %@ (apply %@ f))
-      where apply = \%c fc r ->
+
+  itsBind :: forall a b.
+             ( IntensionalMonadBindC (CoroutineT c s m) a b )
+          => '[CoroutineT c s m a, a ->%c CoroutineT c s m b]
+                ->%%c CoroutineT c s m b
+  itsBind = \%%c x f ->
+    CoroutineT (itsBind %@% (resume x, apply %@ f))
+      where apply :: '[ a ->%c CoroutineT c s m b
+                      , CoroutineStepResult c s m a
+                      ]
+               ->%%c m (CoroutineStepResult c s m b)
+            apply = \%%c fc r ->
               case r of
                 Right v -> resume $ fc %@ v
                 Left s ->
                   itsPure %@
-                    (Left (itsFmap %@ (\%c x -> itsBind %@ x %@ fc) %@ s))
+                    (Left (itsFmap %@% ((\%c x -> itsBind %@% (x, fc)), s)))
 
 instance IntensionalMonadTrans (CoroutineT c s) where
+
   type IntensionalMonadTransLiftC (CoroutineT c s) m a =
-    ( Typeable a, Typeable s, IntensionalFunctorCF m ~ c
-    , IntensionalFunctorMapC m a (CoroutineStepResult c s m a))
+    ( IntensionalFunctorMapC m a (CoroutineStepResult c s m a)
+    )
+
   itsLift = \%c ma ->
-    CoroutineT $ itsFmap %@ (\%c x -> Right x) %@ ma
+    CoroutineT $ itsFmap %@% ((\%c x -> Right x), ma)
 
 -- |Suspends a coroutine.
 suspend :: ( IntensionalMonad m, IntensionalFunctor s

@@ -29,12 +29,15 @@ deriving instance
   => (Ord (StateT c s m a))
 
 evalStateT :: forall c s m a.
-              ( IntensionalMonad m
-              , IntensionalApplicativePureC m a
-              , IntensionalMonadBindC m (a,s) a
+              ( Typeable a
+              , Typeable c
+              , Typeable m
+              , Typeable s
               , c ~ IntensionalFunctorCF m
-              , Typeable s, Typeable a
-              , c (HList '[StateT c s m a])
+              , c (StateT c s m a)
+              , IntensionalMonad m
+              , IntensionalApplicativePureC m a
+              , IntensionalMonadBindC m (a, s) a
               )
            => StateT c s m a ->%c s ->%c m a
 evalStateT = \%c m s ->
@@ -44,12 +47,13 @@ evalStateT = \%c m s ->
 
 instance IntensionalMonadTrans (StateT c s) where
   type IntensionalMonadTransLiftC (StateT c s) m a =
-    ( c ~ IntensionalFunctorCF m
-    , Typeable s, Typeable a
-    , c (HList '[m a])
-    , c (HList '[s])
-    , IntensionalApplicativePureC m (a,s)
-    , IntensionalMonadBindC m a (a,s)
+    ( Typeable a
+    , Typeable s
+    , c ~ IntensionalFunctorCF m
+    , c s
+    , c (m a)
+    , IntensionalApplicativePureC m (a, s)
+    , IntensionalMonadBindC m a (a, s)
     )
   itsLift = \%c m ->
     StateT $ \%c s -> intensional c do

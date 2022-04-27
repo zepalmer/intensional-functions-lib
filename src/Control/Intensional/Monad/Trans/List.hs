@@ -31,7 +31,6 @@ newtype ListT c m a = ListT { runListT :: m (IMList c m a) }
 liftList :: forall c m a.
             ( IntensionalMonad m
             , IntensionalFunctorCF m ~ c
-            , Typeable a, Typeable m
             , IntensionalApplicativePureC m (IMList c m a)
             )
          => [a] ->%c ListT c m a
@@ -45,28 +44,28 @@ instance (IntensionalFunctor m, IntensionalFunctorCF m ~ c)
     => IntensionalFunctor (IMList c m) where
   type IntensionalFunctorCF (IMList c m) = c
   type IntensionalFunctorMapC (IMList c m) a b =
-    ( c ~ IntensionalFunctorCF m
-    , Typeable m
-    , c (HList '[a ->%c b])
+    ( Typeable a, Typeable b, Typeable c
+    , c ~ IntensionalFunctorCF m
+    , c (a ->%c b)
     , IntensionalFunctorMapC m (IMList c m a) (IMList c m b)
     )
-  itsFmap = \%c fn imlst -> case imlst of
+  itsFmap = \%%c fn imlst -> case imlst of
     IMNil -> IMNil
-    IMCons el rest -> IMCons (fn %@ el) (itsFmap %@ (itsFmap %@ fn) %@ rest)
+    IMCons el rest -> IMCons (fn %@ el) (itsFmap %@% (itsFmap %@ fn, rest))
 
 instance (IntensionalFunctor m, IntensionalFunctorCF m ~ c)
     => IntensionalFunctor (ListT c m) where
   type IntensionalFunctorCF (ListT c m) = c
   type IntensionalFunctorMapC (ListT c m) a b =
-    ( c ~ IntensionalFunctorCF m
-    , Typeable m
-    , c (HList '[a ->%c b])
+    ( Typeable a, Typeable b, Typeable c
+    , c ~ IntensionalFunctorCF m
+    , c (a ->%c b)
     , IntensionalFunctorMapC m (IMList c m a) (IMList c m b)
     )
-  itsFmap = \%c fn (ListT mimlst) ->
-    ListT $ itsFmap %@ (itsFmap %@ fn) %@ mimlst
+  itsFmap = \%%c fn (ListT mimlst) ->
+    ListT $ itsFmap %@% (itsFmap %@ fn, mimlst)
 
-instance (IntensionalMonad m, IntensionalFunctorCF m ~ c)
+instance (IntensionalMonad m, IntensionalFunctorCF m ~ c, Typeable c)
     => IntensionalApplicative (ListT c m) where
   type IntensionalApplicativePureC (ListT c m) a =
     (Typeable a, IntensionalApplicativePureC m (IMList c m a))
@@ -74,69 +73,53 @@ instance (IntensionalMonad m, IntensionalFunctorCF m ~ c)
     ListT $ itsPure %@ IMCons x (itsPure %@ IMNil)
   type IntensionalApplicativeApC (ListT c m) a b =
     ( Typeable a, Typeable b
-    , c (HList '[a ->%c b])
-    , c (HList '[(a ->%c b) ->%c ListT c m b])
-    , c (HList '[m (IMList c m b)])
-    , c (HList '[ListT c m a])
-    , c (HList '[ListT c m (a ->%c b)])
-    , c (HList '[ListT c m b ->%c m (IMList c m b)])
-    , IntensionalFunctorMapC m (IMList c m a) (IMList c m b)
-    , IntensionalFunctorMapC m
-        (IMList c m (a ->%c b)) (IMList c m (ListT c m b))
-    , IntensionalFunctorMapC m
-        (IMList c m (ListT c m (a ->%c b))) (IMList c m (ListT c m b))
-    , IntensionalFunctorMapC m
-        (IMList c m (ListT c m b)) (IMList c m (m (IMList c m b)))
-    , IntensionalApplicativePureC m (IMList c m b)
-    , IntensionalMonadBindC m (IMList c m b) (IMList c m b)
-    , IntensionalMonadBindC m (IMList c m (m (IMList c m b))) (IMList c m b)
+    , c (ListT c m a)
+    , IntensionalFunctorMapC (ListT c m) a b
+    , IntensionalMonadBindC (ListT c m) (a ->%c b) b
     )
   (%<*>) = itsAp
 
-instance (IntensionalMonad m, IntensionalFunctorCF m ~ c)
+instance (IntensionalMonad m, IntensionalFunctorCF m ~ c, Typeable c)
     => IntensionalMonad (ListT c m) where
   type IntensionalMonadBindC (ListT c m) a b =
     ( Typeable a, Typeable b
-    , c (HList '[a ->%c ListT c m b])
-    , c (HList '[m (IMList c m b)])
-    , c (HList '[ListT c m a])
-    , c (HList '[ListT c m b ->%c m (IMList c m b)])
+    , c (a ->%c ListT c m b)
+    , c (ListT c m b ->%c m (IMList c m b))
     , IntensionalFunctorMapC m (IMList c m a) (IMList c m (ListT c m b))
-    , IntensionalFunctorMapC m
-        (IMList c m (ListT c m a)) (IMList c m (ListT c m b))
-    , IntensionalFunctorMapC m
-        (IMList c m (ListT c m b)) (IMList c m (m (IMList c m b)))
+    , c (m (IMList c m b))
+    , IntensionalFunctorMapC
+        m (IMList c m (ListT c m b)) (IMList c m (m (IMList c m b)))
     , IntensionalApplicativePureC m (IMList c m b)
     , IntensionalMonadBindC m (IMList c m b) (IMList c m b)
     , IntensionalMonadBindC m (IMList c m (m (IMList c m b))) (IMList c m b)
     )
-  itsBind = \%c mx fn -> joinListT %$ itsFmap %@ fn %@ mx
+  itsBind = \%%c mx fn -> joinListT %$ itsFmap %@% (fn, mx)
 
 instance IntensionalMonadTrans (ListT c) where
   type IntensionalMonadTransLiftC (ListT c) m a =
-    ( IntensionalMonad m
+    ( Typeable c
+    , IntensionalMonad m
     , IntensionalFunctorCF m ~ c
-    , Typeable a
     , IntensionalFunctorMapC m a (IMList c m a)
     , IntensionalApplicativePureC m (IMList c m a)
     )
   itsLift = \%c ma ->
-    ListT $ itsFmap %@ (\%c x -> IMCons x $ itsPure %@ IMNil) %@ ma
+    ListT $ itsFmap %@% ((\%c x -> IMCons x $ itsPure %@ IMNil), ma)
 
-instance (IntensionalMonad m, IntensionalFunctorCF m ~ c)
+instance (IntensionalMonad m, IntensionalFunctorCF m ~ c, Typeable c)
     => IntensionalAlternative (ListT c m) where
   type IntensionalAlternativeEmptyC (ListT c m) a =
     (IntensionalApplicativePureC m (IMList c m a))
   itsEmpty = ListT $ itsPure %@ IMNil
   type IntensionalAlternativeChoiceC (ListT c m) a =
     ( Typeable a
+    , c (m (IMList c m a))
     , IntensionalApplicativePureC m (IMList c m a)
     , IntensionalMonadBindC m (IMList c m a) (IMList c m a)
-    , c (HList '[m (IMList c m a)])
     )
-  (%<|>) = \%c (ListT xs) (ListT ys) -> ListT $ mimlistAppend %@ xs %@ ys
+  (%<|>) = \%%c (ListT xs) (ListT ys) -> ListT $ mimlistAppend %@% (xs, ys)
 
-instance (IntensionalMonad m, IntensionalFunctorCF m ~ c)
+instance (IntensionalMonad m, IntensionalFunctorCF m ~ c, Typeable c)
     => IntensionalMonadPlus (ListT c m) where
   type IntensionalMonadPlusZeroC (ListT c m) a =
     IntensionalAlternativeEmptyC (ListT c m) a
@@ -146,30 +129,20 @@ instance (IntensionalMonad m, IntensionalFunctorCF m ~ c)
   itsMplus = (%<|>)
 
 joinListT :: forall c m a.
-             ( IntensionalMonad m
-             , IntensionalFunctorCF m ~ c
-             , Typeable a
+             ( MIMListAppendC c m a
+             , c (ListT c m a ->%c m (IMList c m a))
              , IntensionalFunctorMapC m
                 (IMList c m (ListT c m a)) (IMList c m (m (IMList c m a)))
-             , c (HList '[m (IMList c m a)])
-             , c (HList '[ListT c m a ->%c m (IMList c m a)])
-             , IntensionalApplicativePureC m (IMList c m a)
-             , IntensionalMonadBindC m (IMList c m a) (IMList c m a)
              , IntensionalMonadBindC m
                 (IMList c m (m (IMList c m a))) (IMList c m a)
              )
           => ListT c m (ListT c m a) ->%c ListT c m a
 joinListT = \%c (ListT mimlst) ->
   ListT $ joinIMList %@
-    (itsFmap %@ (itsFmap %@ (\%c x -> runListT x)) %@ mimlst)
+    (itsFmap %@% ((itsFmap %@ (\%c x -> runListT x)), mimlst))
 
 joinIMList :: forall c m a.
-              ( IntensionalMonad m
-              , IntensionalFunctorCF m ~ c
-              , Typeable a
-              , c (HList '[m (IMList c m a)])
-              , IntensionalApplicativePureC m (IMList c m a)
-              , IntensionalMonadBindC m (IMList c m a) (IMList c m a)
+              ( MIMListAppendC c m a
               , IntensionalMonadBindC m
                   (IMList c m (m (IMList c m a))) (IMList c m a)
               )
@@ -178,19 +151,25 @@ joinIMList = \%c mimlst -> intensional c do
   imlst <- mimlst
   case imlst of
     IMNil -> itsPure %@ IMNil
-    IMCons xs mxss -> mimlistAppend %@ xs %@ (joinIMList %@ mxss)
+    IMCons xs mxss -> mimlistAppend %@% (xs, joinIMList %@ mxss)
+
+type MIMListAppendC c m a =
+  ( Typeable a
+  , Typeable c
+  , c (m (IMList c m a))
+  , IntensionalMonad m
+  , IntensionalFunctorCF m ~ c
+  , IntensionalApplicativePureC m (IMList c m a)
+  , IntensionalMonadBindC m (IMList c m a) (IMList c m a)
+  )
 
 mimlistAppend :: forall c m a.
-                 ( IntensionalMonad m
-                 , IntensionalFunctorCF m ~ c
-                 , Typeable a
-                 , c (HList '[m (IMList c m a)])
-                 , IntensionalApplicativePureC m (IMList c m a)
-                 , IntensionalMonadBindC m (IMList c m a) (IMList c m a)
-                 )
-              => m (IMList c m a) ->%c m (IMList c m a) ->%c m (IMList c m a)
-mimlistAppend = \%c mxs mys -> intensional c do
+                 ( MIMListAppendC c m a )
+              => '[ m (IMList c m a),
+                    m (IMList c m a)
+                  ] ->%%c m (IMList c m a)
+mimlistAppend = \%%c mxs mys -> intensional c do
   xs <- mxs
   case xs of
     IMNil -> mys
-    IMCons x mxs' -> itsPure %@ IMCons x (mimlistAppend %@ mxs' %@ mys)
+    IMCons x mxs' -> itsPure %@ IMCons x (mimlistAppend %@% (mxs', mys))

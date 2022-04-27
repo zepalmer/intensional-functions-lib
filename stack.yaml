@@ -1,14 +1,14 @@
 # Resolver to choose a 'specific' stackage snapshot or a compiler version.
-# NOTE: this should eventually be a GHC 9.0.1 resolver, but as of this writing
-#       (2021-08-05), there are no LTS resolvers using 9.0.1.  Although we don't
+# NOTE: this should eventually be a GHC 9.2.1 resolver, but as of this writing
+#       (2022-03-29), there are no LTS resolvers using 9.2.1.  Although we don't
 #       use the stock compiler, it'd help to ensure that the packages are
 #       compatible with our GHC.
 resolver:
-  url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/5.yaml
+  url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/19/0.yaml
 
 # Using intensional functions GHC
 # NOTE: This should eventually point to a publicly visible repository.
-compiler: ghc-git-33ff15c660b3694ed0aebdf6bd6a426bdad8c566-quick
+compiler: ghc-git-f179f9ab2dbb7ede6ba45d00aa45c3d8e74352dd-quick
 compiler-repository: git.bahj.com:intensional-functions-ghc
 
 # User packages to be built.
