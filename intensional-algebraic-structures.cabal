@@ -35,6 +35,7 @@ library
       Control.Intensional.Monad.Trans.Coroutine.SuspensionFunctors
       Control.Intensional.Monad.Trans.List
       Control.Intensional.Monad.Trans.State
+      Control.Intensional.Monad.Trans.Writer
   other-modules:
       Paths_intensional_algebraic_structures
   hs-source-dirs:
