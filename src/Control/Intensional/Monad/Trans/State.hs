@@ -8,6 +8,8 @@
 module Control.Intensional.Monad.Trans.State
 ( StateT(..)
 , evalStateT
+, itsGet
+, itsSet
 ) where
 
 -- | An intensional analogue to Control.Monad.Trans.State.
@@ -59,3 +61,21 @@ instance IntensionalMonadTrans (StateT c s) where
     StateT $ \%c s -> intensional c do
       a <- m
       itsPure %@ (a, s)
+
+itsGet :: forall c s m.
+          ( Typeable s
+          , c s
+          , IntensionalApplicative m
+          , IntensionalApplicativePureC m (s, s)
+          )
+       => StateT c s m s
+itsGet = StateT $ \%c s -> itsPure %@ (s, s)
+
+itsSet :: forall c s m.
+          ( Typeable s
+          , c s
+          , IntensionalApplicative m
+          , IntensionalApplicativePureC m ((), s)
+          )
+       => s ->%c StateT c s m ()
+itsSet = \%c state -> StateT $ \%c _ -> itsPure %@ ((), state)
