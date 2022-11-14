@@ -19,6 +19,7 @@ import Control.Intensional.Applicative
 import Control.Intensional.Functor
 import Control.Intensional.Monad
 import Control.Intensional.Monad.Trans
+import Control.Intensional.MonadPlus
 import Control.Intensional.Runtime
 
 data IMList (c :: ConstraintFn) m a where

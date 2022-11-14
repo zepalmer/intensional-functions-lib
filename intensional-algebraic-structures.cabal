@@ -34,6 +34,7 @@ library
       Control.Intensional.Monad.Trans.Coroutine
       Control.Intensional.Monad.Trans.Coroutine.SuspensionFunctors
       Control.Intensional.Monad.Trans.List
+      Control.Intensional.Monad.Trans.Maybe
       Control.Intensional.Monad.Trans.State
       Control.Intensional.Monad.Trans.Writer
   other-modules:

@@ -8,7 +8,7 @@ resolver:
 
 # Using intensional functions GHC
 # NOTE: This should eventually point to a publicly visible repository.
-compiler: ghc-git-f179f9ab2dbb7ede6ba45d00aa45c3d8e74352dd-quick
+compiler: ghc-git-cac571902c6c34d6e7aca7f9d52dd63d15e4789d-quick
 compiler-repository: git.bahj.com:intensional-functions-ghc
 
 # User packages to be built.
