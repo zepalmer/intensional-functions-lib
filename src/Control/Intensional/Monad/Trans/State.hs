@@ -47,6 +47,82 @@ evalStateT = \%c m s ->
     ~(a, _) <- runStateT m %@ s
     itsPure %@ a
 
+instance ( Typeable c
+         , Typeable s
+         , Typeable m
+         , c ~ IntensionalFunctorCF m
+         , IntensionalMonad m
+         )
+      => IntensionalFunctor (StateT c s m) where
+  type IntensionalFunctorCF (StateT c s m) = c
+  type IntensionalFunctorMapC (StateT c s m) a b =
+      ( Typeable a
+      , Typeable b
+      , c (a ->%c b)
+      , c (s ->%c m (a,s))
+      , IntensionalApplicativePureC m (b,s)
+      , IntensionalMonadBindC m (a,s) (b,s)
+      )
+  itsFmap = \%%c ab (StateT sma) ->
+    StateT $ \%c s ->
+      intensional c do
+        (a,s') <- sma %@ s
+        itsPure %@ (ab %@ a, s')
+
+instance ( Typeable c
+         , Typeable m
+         , Typeable s
+         , c ~ IntensionalFunctorCF m
+         , IntensionalMonad m
+         )
+      => IntensionalApplicative (StateT c s m) where
+  type IntensionalApplicativePureC (StateT c s m) a =
+        ( Typeable a
+        , c a
+        , IntensionalApplicativePureC m (a, s)
+        )
+  type IntensionalApplicativeApC (StateT c s m) a b =
+        ( Typeable a
+        , Typeable b
+        , c (s ->%c m (a,s))
+        , c (s ->%c (m ((a ->%c b),s)))
+        , c (a ->%c b)
+        , IntensionalApplicativePureC m (b,s)
+        , IntensionalMonadBindC m ((a ->%c b),s) (b,s)
+        , IntensionalMonadBindC m (a,s) (b,s)
+        )
+  itsPure = \%c x ->
+    StateT (\%c s -> itsPure %@ (x,s))
+  (%<*>) = \%%c (StateT (smab :: s ->%c (m (a ->%c b, s)))) (StateT (sa :: s ->%c m (a, s))) ->
+    StateT $ \%c s ->
+      intensional c do
+        (ab,s') <- smab %@ s
+        (a,s'') <- sa %@ s'
+        itsPure %@ (ab %@ a, s'')
+
+instance ( Typeable c
+         , Typeable m
+         , Typeable s
+         , c ~ IntensionalFunctorCF m
+         , IntensionalMonad m
+         )
+      => IntensionalMonad (StateT c s m) where
+  type IntensionalMonadBindC (StateT c s m) a b =
+        ( Typeable a
+        , Typeable b
+        , c (a ->%c StateT c s m b)
+        , c (s ->%c m (a,s))
+        , IntensionalMonadBindC m (a,s) (b,s)
+        )
+  itsBind = \%%c (StateT (ma :: s ->%c m (a,s))) (amb :: a ->%c StateT c s m b) ->
+    (
+    StateT $ \%c s ->
+      intensional c do
+        (a,s') <- ma %@ s
+        let StateT smb = amb %@ a
+        smb %@ s'
+    ) :: StateT c s m b
+
 instance IntensionalMonadTrans (StateT c s) where
   type IntensionalMonadTransLiftC (StateT c s) m a =
     ( Typeable a
