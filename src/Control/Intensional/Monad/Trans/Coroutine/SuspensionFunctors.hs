@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE IntensionalFunctions #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -18,12 +19,16 @@ import Control.Intensional.Runtime
 import Control.Intensional.UtilityFunctions
 
 data Yield (c :: ConstraintFn) x y = Yield x y
+deriving instance (Eq x, Eq y) => (Eq (Yield c x y))
+deriving instance (Ord x, Ord y) => (Ord (Yield c x y))
 instance (Typeable c, Typeable x) => IntensionalFunctor (Yield c x) where
   type IntensionalFunctorCF (Yield c x) = c
   type IntensionalFunctorMapC (Yield c x) a b = ()
   itsFmap = \%%c f (Yield x y) -> Yield x $ f %@ y
 
 data Await c x y = Await (x ->%c y)
+deriving instance (Eq (x ->%c y)) => (Eq (Await c x y))
+deriving instance (Ord (x ->%c y)) => (Ord (Await c x y))
 instance (Typeable c, Typeable x) => IntensionalFunctor (Await c x) where
   type IntensionalFunctorCF (Await c x) = c
   type IntensionalFunctorMapC (Await c x) a b =
