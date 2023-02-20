@@ -14,9 +14,11 @@ module Control.Intensional.Monad.Trans.State
 
 -- | An intensional analogue to Control.Monad.Trans.State.
 
+import Control.Intensional.Alternative
 import Control.Intensional.Applicative
 import Control.Intensional.Functor
 import Control.Intensional.Monad
+import Control.Intensional.MonadPlus
 import Control.Intensional.Monad.Trans
 import Control.Intensional.Runtime
 
@@ -122,6 +124,43 @@ instance ( Typeable c
         let StateT smb = amb %@ a
         smb %@ s'
     ) :: StateT c s m b
+
+instance ( Typeable c, Typeable s
+         , IntensionalFunctorCF m ~ c
+         , IntensionalAlternative m
+         , IntensionalMonad m
+         )
+    => IntensionalAlternative (StateT c s m) where
+  type IntensionalAlternativeEmptyC (StateT c s m) a = (
+      IntensionalAlternativeEmptyC m (a, s)
+    )
+  type IntensionalAlternativeChoiceC (StateT c s m) a = (
+      Typeable a,
+      c (s ->%c m (a, s)),
+      IntensionalAlternativeChoiceC m (a, s)
+    )
+  itsEmpty = StateT $ \%c _ -> itsEmpty
+  (%<|>) = \%%Ord (StateT sma) (StateT smb) ->
+    StateT $ \%c s -> (%<|>) %@% (sma %@ s, smb %@ s)
+
+instance ( Typeable c, Typeable s
+         , IntensionalFunctorCF m ~ c
+         , IntensionalMonad m
+         , IntensionalMonadPlus m
+         )
+    => IntensionalMonadPlus (StateT c s m) where
+  type IntensionalMonadPlusZeroC (StateT c s m) a = (
+      IntensionalMonadPlusZeroC m (a, s)
+    )
+  type IntensionalMonadPlusPlusC (StateT c s m) a = (
+      Typeable a,
+      c (s ->%c m (a, s)),
+      IntensionalMonadPlusPlusC m (a, s)
+    )
+  itsMzero = StateT $ \%c _ -> itsMzero
+  itsMplus = \%%Ord (StateT sma) (StateT smb) ->
+    StateT $ \%c s -> itsMplus %@% (sma %@ s, smb %@ s)
+
 
 instance IntensionalMonadTrans (StateT c s) where
   type IntensionalMonadTransLiftC (StateT c s) m a =
