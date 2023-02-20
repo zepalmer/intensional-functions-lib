@@ -7,6 +7,7 @@
 
 module Control.Intensional.Monad.Trans.List
 ( IMList(..)
+, imListToList
 , ListT(..)
 , liftList
 ) where
@@ -26,6 +27,24 @@ data IMList (c :: ConstraintFn) m a where
   IMNil :: (IntensionalFunctorCF m ~ c) => IMList c m a
   IMCons :: (IntensionalFunctorCF m ~ c)
          => a -> m (IMList c m a) -> IMList c m a
+
+imListToList :: forall c m a.
+                ( Typeable a
+                , IntensionalMonad m
+                , IntensionalFunctorCF m ~ c
+                , c a
+                , IntensionalApplicativePureC m [a]
+                , IntensionalMonadBindC m [a] [a]
+                , IntensionalMonadBindC m (IMList c m a) [a]
+                )
+             => IMList c m a ->%c m [a]
+imListToList = \%c imList ->
+  case imList of
+    IMNil -> itsPure %@ []
+    IMCons h mt -> intensional c do
+      t <- mt
+      t' <- imListToList %@ t
+      itsPure %@ (h : t')
 
 newtype ListT c m a = ListT { runListT :: m (IMList c m a) }
 
