@@ -28,6 +28,9 @@ data IMList (c :: ConstraintFn) m a where
   IMCons :: (IntensionalFunctorCF m ~ c)
          => a -> m (IMList c m a) -> IMList c m a
 
+deriving instance (Eq a, Eq (m (IMList c m a))) => Eq (IMList c m a)
+deriving instance (Ord a, Ord (m (IMList c m a))) => Ord (IMList c m a)
+
 imListToList :: forall c m a.
                 ( Typeable a
                 , IntensionalMonad m
@@ -47,6 +50,9 @@ imListToList = \%c imList ->
       itsPure %@ (h : t')
 
 newtype ListT c m a = ListT { runListT :: m (IMList c m a) }
+
+deriving instance (Eq (m (IMList c m a))) => (Eq (ListT c m a))
+deriving instance (Ord (m (IMList c m a))) => (Ord (ListT c m a))
 
 liftList :: forall c m a.
             ( IntensionalMonad m
