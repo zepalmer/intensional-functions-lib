@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -12,7 +12,7 @@ homepage:       https://github.com/zepalmer/intensional-algebraic-structures#rea
 bug-reports:    https://github.com/zepalmer/intensional-algebraic-structures/issues
 author:         Zachary Palmer
 maintainer:     zep_github@bahj.com
-copyright:      2021 Zachary Palmer
+copyright:      2021-2024 Zachary Palmer
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
